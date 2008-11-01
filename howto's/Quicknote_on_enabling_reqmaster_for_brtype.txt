@@ -1,0 +1,46 @@
+1. Feature level > 2
+
+2. Each replica must master its own replica.
+
+3. Schedule frequent syncs between sites, in order to prevent huge out-of-sync packets...
+
+4. Activate RECEIPT HANDLERS in shipping.conf
+
+5. Enable replica level 'reqmaster' . mt reqmaster -enable vob:/<vob_tag>
+
+6. Apply ACL for reqmaster. mt reqmaster -acl -edit
+
+7. Modify RFM_OPTIONAL_ARGUMENTS =  -compress  -maxsize 50m -limit 4, in /var/adm/rational/clearcase/config/rfm_shipping.conf
+
+8. Apply trigger to 'default' the mastership at all replica, where reqmaster is activated.
+#!/bin/sh
+
+cleartool mktrtype -rep -element -all -c "default the mastership" -postop mkelem -execunix '/usr/atria/bin/Perl /home/dilipm/clearcase/default_br_mastership.bat' -execwin '\\blrpc112\scripts\triggers\default_main_br_mastership.bat' tr_chmaster_default
+
+where:default_main_br_mastership.bat
+====
+@rem = ' This is a perl script for NT and UNIX.
+@echo off
+goto endofperl
+@rem ';
+# -*- tab-width: 4 -*-
+my $L_FullFileName = "$ENV{CLEARCASE_PN}" ;
+
+`cleartool chmaster -default "$L_FullFileName"@@/main 2>&1 `;
+
+
+__END__
+:endofperl
+if exist "%0" (cmd /C \\%CLEARCASE_SERVER%\perl\bin\perl %0 %*) else (cmd /C \\%CLEARCASE_SERVER%\perl\bin\perl %0.bat %*)
+=====
+
+9. ensure that there is no co's in main branch.
+
+ct lsco -long -brtype main -all
+
+10. Once activated run the below cmd, so that all elements are defaulted. Later triggers will take care...,
+
+ct find -all -branch 'brtype(main)' -exec 'multitool chmaster -def "$CLEARCASE_XPN"'
+
+
+ 
